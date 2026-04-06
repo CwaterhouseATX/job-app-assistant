@@ -1,516 +1,134 @@
-This guide explains how to use Git with this specific project so you can safely version it, push it to GitHub, update it, and share it without exposing secrets or cluttering the repo.
+# AI Job Application Assistant
 
-PROJECT OVERVIEW
-This project is a PyQt6 desktop app for job application workflows. It includes:
-- Core Python package: job_app_assistant/
-- GUI tabs for Analysis, Document Preview, HR Research, Chat, and Settings
-- OpenAI integration
-- Local JSON settings
-- Workspace save/load support
+Desktop app that helps you analyze job postings, draft tailored resumes and cover letters grounded in your own materials, and explore employer context—all with **OpenAI** models and a **PyQt6** GUI.
 
-The current architecture includes:
-- AppConfig as the single source of truth for api_key and library_path
-- JSON persistence for config
-- Workspace save/load v1
-- Saved workspace fields include:
-  - job_title
-  - company
-  - job_description
-  - analysis_report
-  - hr_research
-  - resume_draft
-  - cover_letter_draft
-- Workspace excludes:
-  - chat history
-  - settings
+## Goals
 
-IMPORTANT PROJECT RULES
-- Keep changes minimal
-- Do not refactor unless necessary
-- Use a new chat for each command if following the project workflow notes
-- Prefer focused, isolated commits
-- Avoid committing local secrets, machine-specific settings, or generated junk
+- **Stay factual**: Tie analysis and generated documents to your personal document library and the job description, not invented credentials.
+- **Speed up the loop**: Load a posting (URL or file), get a structured pros/cons-style analysis, then generate editable drafts you can export to **DOCX**.
+- **Keep context portable**: Save and reopen “workspace” JSON with job text, analysis, drafts, and optional company/title metadata (excluding chat and local settings).
 
---------------------------------------------------
-1. WHAT SHOULD BE TRACKED IN GIT
---------------------------------------------------
+## Architecture (high level)
 
-You SHOULD track:
-- Source code under job_app_assistant/
-- GUI files under job_app_assistant/gui/
-- requirements.txt
-- documentation files
-- project notes that are safe to share
-- templates that are meant to ship with the project
+| Layer | Role |
+|--------|------|
+| **GUI** (`gui/`) | Tabs: **Input & Analysis**, **Documents** (preview / generate / export), **HR research**, **Chat**, **Settings**. `AppConfig` + JSON hold API key and library path (not committed). |
+| **Document intake** (`document_processor.py`) | Plain text from posting URLs (HTTP + HTML), PDF/DOCX/TXT via PyMuPDF / python-docx. |
+| **Library** (`library_manager.py`) | Scans a folder of your files and builds context for prompts. |
+| **Analysis** (`job_analyzer.py`) | Job-vs-library fit report via `OpenAIClient`. |
+| **Generation** (`application_documents.py`, `document_architect.py`) | Resume (Markdown-oriented) and cover letter (plain text), exported to ATS-friendly Word. |
+| **HR research** (`hr_researcher.py`) | Optional research flow using company + JD. |
+| **Workspace** (`gui/workspace.py`) | Save/load application state as JSON (v1). |
 
-Examples:
-- job_app_assistant/openai_client.py
-- job_app_assistant/document_processor.py
-- job_app_assistant/application_documents.py
-- job_app_assistant/job_analyzer.py
-- job_app_assistant/hr_researcher.py
-- job_app_assistant/gui/main_window.py
-- job_app_assistant/gui/workspace.py
-- requirements.txt
+The **OpenAI** integration lives in `openai_client.py` (defaults include low temperature and conservative system instructions). The GUI entry point is `__main__.py`.
 
---------------------------------------------------
-2. WHAT SHOULD NOT BE TRACKED
---------------------------------------------------
+## Requirements
 
-You should NOT track:
-- API keys
-- personal library paths
-- local-only settings
-- virtual environments
-- Python cache files
-- compiled files
-- temporary logs
-- editor junk
-- personal test data unless intentionally included
+- **Python 3.10+** (recommended)
+- **OpenAI API key** (or set `OPENAI_API_KEY` in the environment; the app can also store a key in local settings—do not commit that file)
 
-For this project, be especially careful with:
-- settings.json
+### Dependencies
 
-The settings file can contain:
-- library_path
-- api_key
+Install these packages (for example with `pip`):
 
-That means settings.json should stay OUT of Git if it contains real values.
-
---------------------------------------------------
-3. REQUIRED .GITIGNORE FOR THIS PROJECT
---------------------------------------------------
-
-Create a .gitignore file in the project root with the following contents:
-
-# Python cache
-__pycache__/
-*.pyc
-
-# Virtual environments
-.venv/
-venv/
-
-# Secrets and local config
-.env
-settings.json
-
-# Logs
-*.log
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Optional IDE files
-.vscode/
-.idea/
-
-Why this matters:
-- __pycache__ and *.pyc are generated automatically
-- .venv or venv can be huge and machine-specific
-- settings.json may expose your API key
-- editor folders do not belong in the repo unless intentionally shared
-
---------------------------------------------------
-4. FIRST TIME GIT SETUP FOR THIS PROJECT
---------------------------------------------------
-
-From PowerShell, go to the project root, the folder that contains:
-- requirements.txt
-- folder_structure.txt
-- job_app_assistant/
+```text
+PyQt6
+openai
+PyMuPDF
+requests
+beautifulsoup4
+python-docx
+```
 
 Example:
-cd C:\\path\\to\\your\\project
 
-Initialize Git:
-git init
+```bash
+pip install PyQt6 openai PyMuPDF requests beautifulsoup4 python-docx
+```
 
-Create .gitignore before your first real push.
+> **Tip:** Add a `requirements.txt` (or `pyproject.toml`) to pin versions for reproducible installs.
 
-Add files:
-git add .
-
-Create first commit:
-git commit -m "Initial commit"
+## Installation
 
---------------------------------------------------
-5. CONNECT THIS PROJECT TO GITHUB
---------------------------------------------------
+1. **Clone** the repo. For the run command below, the repository folder should be importable as the package `job_app_assistant` (clone into a directory named `job_app_assistant`, or adjust your `PYTHONPATH`).
 
-Create a new empty GitHub repository first.
-Important:
-- Do not pre-add a README
-- Do not pre-add a .gitignore
-- Do not pre-add a license unless you intend to manage merge differences
+2. **Create a virtual environment** (recommended):
 
-Then connect your local repo:
+   ```bash
+   python -m venv .venv
+   ```
 
-git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git
-git branch -M main
-git push -u origin main
+   - **Windows:** `.venv\Scripts\activate`
+   - **macOS / Linux:** `source .venv/bin/activate`
 
-After that, future pushes are just:
-git push
+3. **Install dependencies** (see above).
 
---------------------------------------------------
-6. NORMAL DAILY WORKFLOW FOR THIS PROJECT
---------------------------------------------------
+4. **Run the app** from the **parent** directory of the `job_app_assistant` package folder:
 
-Before changing code:
-git status
+   ```bash
+   cd /path/to/parent
+   python -m job_app_assistant
+   ```
 
-After editing files:
-git add .
+   If your checkout path does not match the package name, set `PYTHONPATH` to that parent directory or install the package in editable mode once you add packaging metadata.
 
-Commit with a specific message:
-git commit -m "Fix workspace load behavior"
+## Usage (typical workflow)
 
-Push:
-git push
+1. **Settings / library**  
+   Choose your **personal library** folder (PDF, DOCX, TXT resumes and notes). Optionally set an **OpenAI API key** if not using the environment variable.
 
-Good commit message examples for this project:
-- Add workspace save/load support
-- Fix duplicate preview initialization
-- Add HR Research tab UX improvements
-- Clear chat on workspace load
-- Tighten OpenAI client error handling
-- Improve DOCX extraction formatting
+2. **Input & Analysis**  
+   Paste a job description or load one from a **URL** or **file**. Optionally set **Job title** and **Company** (used for prompts and clean export filenames). Run **Run analysis** to get the structured report.
 
-Bad commit messages:
-- stuff
-- updates
-- fix
-- changes
+3. **Documents**  
+   **Generate resume & cover letter**, edit the previews, then **Download** `.docx` files. Filenames use your company/title metadata when present.
 
---------------------------------------------------
-7. SAFE COMMIT STRATEGY FOR THIS PROJECT
---------------------------------------------------
+4. **HR research** (optional)  
+   Uses company and posting context from the analysis tab.
 
-This project is modular. Commit by component when possible.
+5. **Chat** (optional)  
+   Conversational help grounded in the same job and library context.
 
-Good pattern:
-1. Edit one area only
-2. Test that area
-3. Commit only that change
+6. **File menu**  
+   **Save Application…** / **Open Application…** stores or restores workspace JSON (job description, titles, company, analysis, HR research text, resume/cover drafts). Local **settings** and chat history are not included in that file.
 
-Examples:
-- One commit for job_app_assistant/job_analyzer.py
-- One commit for gui/document_preview_tab.py
-- One commit for workspace.py changes
+## Project layout
 
-This makes it easier to:
-- undo mistakes
-- find bugs
-- review history
-- share clean updates
+```text
+job_app_assistant/
+  __main__.py           # GUI entry
+  __init__.py
+  openai_client.py
+  document_processor.py
+  library_manager.py
+  job_analyzer.py
+  application_documents.py
+  document_architect.py
+  hr_researcher.py
+  gui/
+    main_window.py
+    analysis_tab.py
+    document_preview_tab.py
+    hr_research_tab.py
+    chat_tab.py
+    settings_tab.py
+    workspace.py
+    app_config.py
+```
 
---------------------------------------------------
-8. HOW TO CHECK WHAT WILL BE COMMITTED
---------------------------------------------------
+## Security & privacy
 
-Before committing, always run:
-git status
+- **Never commit `settings.json`** if it contains your API key or personal paths (it is listed in `.gitignore`).
+- Generated content is only as accurate as your library and the posting; review before sending applications.
 
-This shows:
-- modified files
-- new files
-- deleted files
-- ignored files are not shown unless you ask
+## Contributing
 
-To see detailed changes:
-git diff
+Issues and pull requests are welcome. Keep changes focused; avoid committing secrets or machine-specific paths.
 
-This is important for this project because you do NOT want to accidentally commit:
-- settings.json
-- test documents with personal data
-- private resume libraries
-- random generated files
+## License
 
---------------------------------------------------
-9. IF YOU ACCIDENTALLY TRACKED settings.json
---------------------------------------------------
+Specify your license here (for example MIT, Apache-2.0, or “All rights reserved”). *Replace this line when you add a `LICENSE` file.*
 
-If settings.json was added to Git by mistake, remove it from tracking but keep your local file:
+---
 
-git rm --cached settings.json
-git commit -m "Remove sensitive local settings from tracking"
-git push
-
-Then make sure settings.json is in .gitignore.
-
-If the file already contained a real API key and was pushed publicly, rotate that key immediately.
-
---------------------------------------------------
-10. HOW TO PULL CHANGES ON ANOTHER MACHINE
---------------------------------------------------
-
-On another machine:
-
-git clone https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git
-cd YOUR_REPO_NAME
-pip install -r requirements.txt
-
-Then recreate your local-only configuration manually.
-Do not expect settings.json with your real API key to be present.
-
-You may need to:
-- create your own settings.json
-- enter your own OpenAI API key
-- set your own library path
-
---------------------------------------------------
-11. PROJECT-SPECIFIC LOCAL SETUP AFTER CLONE
---------------------------------------------------
-
-After cloning, install dependencies:
-pip install -r requirements.txt
-
-The project dependencies include packages such as:
-- requests
-- beautifulsoup4
-- pymupdf
-- python-docx
-- openai
-- ddgs
-- PyQt6
-
-Then configure your local settings for:
-- api_key
-- library_path
-
-Because settings are local, each user should manage their own environment.
-
---------------------------------------------------
-12. RUNNING THE APP
---------------------------------------------------
-
-This project is designed to run as a desktop GUI app.
-
-Typical launch command:
-python -m job_app_assistant
-
-That runs the PyQt6 application entry point.
-
---------------------------------------------------
-13. BRANCHING RECOMMENDATION FOR THIS PROJECT
---------------------------------------------------
-
-If you are working alone, simple main-only workflow is fine:
-- edit
-- commit
-- push
-
-If you are making risky changes, use feature branches:
-git checkout -b feature/workspace-fixes
-
-Examples:
-- feature/hr-research-tab
-- feature/chat-clear-on-load
-- feature/document-preview-fix
-
-When done:
-git add .
-git commit -m "Finish workspace UX update"
-git push -u origin feature/workspace-fixes
-
-Then merge on GitHub or locally.
-
---------------------------------------------------
-14. HOW TO SHARE THIS PROJECT
---------------------------------------------------
-
-You can share it in several ways.
-
-Public repo:
-- anyone can view and clone it
-
-Private repo:
-- only you and invited collaborators can access it
-
-To check visibility:
-- open the GitHub repo page
-- look near the repo name
-- it will say Public or Private
-
-To safely share this project, make sure you are NOT sharing:
-- real API keys
-- personal library documents
-- sensitive work product
-- unredacted candidate materials
-
---------------------------------------------------
-15. WHAT TO TEST BEFORE PUSHING
---------------------------------------------------
-
-Before pushing code changes, test the area you touched.
-
-Recommended checks:
-- App launches
-- Settings load/save still works
-- Workspace save/load still works
-- Document preview does not double initialize
-- HR Research tab still opens
-- Analysis tab still functions
-- No obvious import errors
-- No accidental secret files staged
-
-Minimum pre-push check:
-1. git status
-2. run the app
-3. test your changed feature
-4. git push
-
---------------------------------------------------
-16. EXAMPLE WORKFLOW, FIXING ONE BUG
---------------------------------------------------
-
-Example: you fix duplicate preview initialization.
-
-1. Open PowerShell in project folder
-2. Check status:
-   git status
-
-3. Edit only the needed file
-4. Test app
-5. Review diff:
-   git diff
-
-6. Stage file:
-   git add job_app_assistant\\gui\\document_preview_tab.py
-
-7. Commit:
-   git commit -m "Fix duplicate preview initialization"
-
-8. Push:
-   git push
-
-This is the preferred style for this project, small targeted updates.
-
---------------------------------------------------
-17. EXAMPLE WORKFLOW, NEW FEATURE
---------------------------------------------------
-
-Example: add chat clear on workspace load.
-
-1. Create branch:
-   git checkout -b feature/chat-clear-on-load
-
-2. Make change
-3. Test workspace load
-4. Review:
-   git diff
-
-5. Stage:
-   git add job_app_assistant\\gui\\workspace.py
-   git add job_app_assistant\\gui\\chat_tab.py
-
-6. Commit:
-   git commit -m "Clear chat state on workspace load"
-
-7. Push:
-   git push -u origin feature/chat-clear-on-load
-
---------------------------------------------------
-18. TROUBLESHOOTING
---------------------------------------------------
-
-Problem: push rejected because remote has content
-Cause:
-- GitHub repo was created with README or other initial files
-
-Fix:
-git pull origin main --allow-unrelated-histories
-git push
-
-Problem: wrong files are staged
-Fix:
-git status
-git restore --staged FILE_NAME
-
-Problem: you changed a file and want to discard local changes
-Fix:
-git restore FILE_NAME
-
-Problem: forgot what changed
-Fix:
-git diff
-
-Problem: committed locally but not pushed yet
-Fix:
-git push
-
-Problem: accidentally committed secret data
-Fix:
-- remove tracked file
-- commit removal
-- push
-- rotate the secret if it was exposed
-
---------------------------------------------------
-19. SUGGESTED REPO HYGIENE FOR THIS PROJECT
---------------------------------------------------
-
-Recommended:
-- Commit after each stable change
-- Keep commits small
-- Keep secrets local
-- Use descriptive messages
-- Do not dump test files into the repo root
-- Do not commit private resumes or candidate libraries unless intentionally sanitized
-- Review git diff before commit when working with config files
-
---------------------------------------------------
-20. QUICK COMMAND REFERENCE
---------------------------------------------------
-
-Initialize repo:
-git init
-
-Check status:
-git status
-
-See changes:
-git diff
-
-Stage all:
-git add .
-
-Stage one file:
-git add path\\to\\file.py
-
-Commit:
-git commit -m "Your message"
-
-Push:
-git push
-
-Pull:
-git pull
-
-Create branch:
-git checkout -b feature/branch-name
-
-Switch branch:
-git checkout main
-
-Remove tracked file but keep locally:
-git rm --cached settings.json
-
-Clone repo:
-git clone https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git
-
---------------------------------------------------
-21. FINAL SAFETY CHECK FOR THIS PROJECT
---------------------------------------------------
-
-Before any public push, confirm:
-- settings.json is ignored
-- no API keys are in tracked files
-- no personal library documents are included unintentionally
-- no __pycache__ or .pyc files are staged
-- commit message describes the real change
-- app still launches
-
-END OF GUIDE
+**Disclaimer:** This tool uses third-party AI services; usage is subject to OpenAI’s terms and your account billing. This project is not affiliated with OpenAI.
