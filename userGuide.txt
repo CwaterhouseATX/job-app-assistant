@@ -1,0 +1,522 @@
+PURPOSE
+This guide explains how to use Git with this specific project so you can safely version it, push it to GitHub, update it, and share it without exposing secrets or cluttering the repo.
+
+PROJECT OVERVIEW
+This project is a PyQt6 desktop app for job application workflows. It includes:
+- Core Python package: job_app_assistant/
+- GUI tabs for Analysis, Document Preview, HR Research, Chat, and Settings
+- OpenAI integration
+- Local JSON settings
+- Workspace save/load support
+
+The current architecture includes:
+- AppConfig as the single source of truth for api_key and library_path
+- JSON persistence for config
+- Workspace save/load v1
+- Saved workspace fields include:
+  - job_title
+  - company
+  - job_description
+  - analysis_report
+  - hr_research
+  - resume_draft
+  - cover_letter_draft
+- Workspace excludes:
+  - chat history
+  - settings
+
+IMPORTANT PROJECT RULES
+- Keep changes minimal
+- Do not refactor unless necessary
+- Use a new chat for each command if following the project workflow notes
+- Prefer focused, isolated commits
+- Avoid committing local secrets, machine-specific settings, or generated junk
+
+--------------------------------------------------
+1. WHAT SHOULD BE TRACKED IN GIT
+--------------------------------------------------
+
+You SHOULD track:
+- Source code under job_app_assistant/
+- GUI files under job_app_assistant/gui/
+- requirements.txt
+- documentation files
+- project notes that are safe to share
+- templates that are meant to ship with the project
+
+Examples:
+- job_app_assistant/openai_client.py
+- job_app_assistant/document_processor.py
+- job_app_assistant/application_documents.py
+- job_app_assistant/job_analyzer.py
+- job_app_assistant/hr_researcher.py
+- job_app_assistant/gui/main_window.py
+- job_app_assistant/gui/workspace.py
+- requirements.txt
+
+--------------------------------------------------
+2. WHAT SHOULD NOT BE TRACKED
+--------------------------------------------------
+
+You should NOT track:
+- API keys
+- personal library paths
+- local-only settings
+- virtual environments
+- Python cache files
+- compiled files
+- temporary logs
+- editor junk
+- personal test data unless intentionally included
+
+For this project, be especially careful with:
+- settings.json
+
+The settings file can contain:
+- library_path
+- api_key
+
+That means settings.json should stay OUT of Git if it contains real values.
+
+--------------------------------------------------
+3. REQUIRED .GITIGNORE FOR THIS PROJECT
+--------------------------------------------------
+
+Create a .gitignore file in the project root with the following contents:
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual environments
+.venv/
+venv/
+
+# Secrets and local config
+.env
+settings.json
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Optional IDE files
+.vscode/
+.idea/
+
+Why this matters:
+- __pycache__ and *.pyc are generated automatically
+- .venv or venv can be huge and machine-specific
+- settings.json may expose your API key
+- editor folders do not belong in the repo unless intentionally shared
+
+--------------------------------------------------
+4. FIRST TIME GIT SETUP FOR THIS PROJECT
+--------------------------------------------------
+
+From PowerShell, go to the project root, the folder that contains:
+- requirements.txt
+- folder_structure.txt
+- job_app_assistant/
+
+Example:
+cd C:\\path\\to\\your\\project
+
+Initialize Git:
+git init
+
+Create .gitignore before your first real push.
+
+Add files:
+git add .
+
+Create first commit:
+git commit -m "Initial commit"
+
+--------------------------------------------------
+5. CONNECT THIS PROJECT TO GITHUB
+--------------------------------------------------
+
+Create a new empty GitHub repository first.
+Important:
+- Do not pre-add a README
+- Do not pre-add a .gitignore
+- Do not pre-add a license unless you intend to manage merge differences
+
+Then connect your local repo:
+
+git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git
+git branch -M main
+git push -u origin main
+
+After that, future pushes are just:
+git push
+
+--------------------------------------------------
+6. NORMAL DAILY WORKFLOW FOR THIS PROJECT
+--------------------------------------------------
+
+Before changing code:
+git status
+
+After editing files:
+git add .
+
+Commit with a specific message:
+git commit -m "Fix workspace load behavior"
+
+Push:
+git push
+
+Good commit message examples for this project:
+- Add workspace save/load support
+- Fix duplicate preview initialization
+- Add HR Research tab UX improvements
+- Clear chat on workspace load
+- Tighten OpenAI client error handling
+- Improve DOCX extraction formatting
+
+Bad commit messages:
+- stuff
+- updates
+- fix
+- changes
+
+--------------------------------------------------
+7. SAFE COMMIT STRATEGY FOR THIS PROJECT
+--------------------------------------------------
+
+This project is modular. Commit by component when possible.
+
+Good pattern:
+1. Edit one area only
+2. Test that area
+3. Commit only that change
+
+Examples:
+- One commit for job_app_assistant/job_analyzer.py
+- One commit for gui/document_preview_tab.py
+- One commit for workspace.py changes
+
+This makes it easier to:
+- undo mistakes
+- find bugs
+- review history
+- share clean updates
+
+--------------------------------------------------
+8. HOW TO CHECK WHAT WILL BE COMMITTED
+--------------------------------------------------
+
+Before committing, always run:
+git status
+
+This shows:
+- modified files
+- new files
+- deleted files
+- ignored files are not shown unless you ask
+
+To see detailed changes:
+git diff
+
+This is important for this project because you do NOT want to accidentally commit:
+- settings.json
+- test documents with personal data
+- private resume libraries
+- random generated files
+
+--------------------------------------------------
+9. IF YOU ACCIDENTALLY TRACKED settings.json
+--------------------------------------------------
+
+If settings.json was added to Git by mistake, remove it from tracking but keep your local file:
+
+git rm --cached settings.json
+git commit -m "Remove sensitive local settings from tracking"
+git push
+
+Then make sure settings.json is in .gitignore.
+
+If the file already contained a real API key and was pushed publicly, rotate that key immediately.
+
+--------------------------------------------------
+10. HOW TO PULL CHANGES ON ANOTHER MACHINE
+--------------------------------------------------
+
+On another machine:
+
+git clone https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git
+cd YOUR_REPO_NAME
+pip install -r requirements.txt
+
+Then recreate your local-only configuration manually.
+Do not expect settings.json with your real API key to be present.
+
+You may need to:
+- create your own settings.json
+- enter your own OpenAI API key
+- set your own library path
+
+--------------------------------------------------
+11. PROJECT-SPECIFIC LOCAL SETUP AFTER CLONE
+--------------------------------------------------
+
+After cloning, install dependencies:
+pip install -r requirements.txt
+
+The project dependencies include packages such as:
+- requests
+- beautifulsoup4
+- pymupdf
+- python-docx
+- openai
+- ddgs
+- PyQt6
+
+Then configure your local settings for:
+- api_key
+- library_path
+
+Because settings are local, each user should manage their own environment.
+
+--------------------------------------------------
+12. RUNNING THE APP
+--------------------------------------------------
+
+This project is designed to run as a desktop GUI app.
+
+Typical launch command:
+python -m job_app_assistant
+
+That runs the PyQt6 application entry point.
+
+--------------------------------------------------
+13. BRANCHING RECOMMENDATION FOR THIS PROJECT
+--------------------------------------------------
+
+If you are working alone, simple main-only workflow is fine:
+- edit
+- commit
+- push
+
+If you are making risky changes, use feature branches:
+git checkout -b feature/workspace-fixes
+
+Examples:
+- feature/hr-research-tab
+- feature/chat-clear-on-load
+- feature/document-preview-fix
+
+When done:
+git add .
+git commit -m "Finish workspace UX update"
+git push -u origin feature/workspace-fixes
+
+Then merge on GitHub or locally.
+
+--------------------------------------------------
+14. HOW TO SHARE THIS PROJECT
+--------------------------------------------------
+
+You can share it in several ways.
+
+Public repo:
+- anyone can view and clone it
+
+Private repo:
+- only you and invited collaborators can access it
+
+To check visibility:
+- open the GitHub repo page
+- look near the repo name
+- it will say Public or Private
+
+To safely share this project, make sure you are NOT sharing:
+- real API keys
+- personal library documents
+- sensitive work product
+- unredacted candidate materials
+
+--------------------------------------------------
+15. WHAT TO TEST BEFORE PUSHING
+--------------------------------------------------
+
+Before pushing code changes, test the area you touched.
+
+Recommended checks:
+- App launches
+- Settings load/save still works
+- Workspace save/load still works
+- Document preview does not double initialize
+- HR Research tab still opens
+- Analysis tab still functions
+- No obvious import errors
+- No accidental secret files staged
+
+Minimum pre-push check:
+1. git status
+2. run the app
+3. test your changed feature
+4. git push
+
+--------------------------------------------------
+16. EXAMPLE WORKFLOW, FIXING ONE BUG
+--------------------------------------------------
+
+Example: you fix duplicate preview initialization.
+
+1. Open PowerShell in project folder
+2. Check status:
+   git status
+
+3. Edit only the needed file
+4. Test app
+5. Review diff:
+   git diff
+
+6. Stage file:
+   git add job_app_assistant\\gui\\document_preview_tab.py
+
+7. Commit:
+   git commit -m "Fix duplicate preview initialization"
+
+8. Push:
+   git push
+
+This is the preferred style for this project, small targeted updates.
+
+--------------------------------------------------
+17. EXAMPLE WORKFLOW, NEW FEATURE
+--------------------------------------------------
+
+Example: add chat clear on workspace load.
+
+1. Create branch:
+   git checkout -b feature/chat-clear-on-load
+
+2. Make change
+3. Test workspace load
+4. Review:
+   git diff
+
+5. Stage:
+   git add job_app_assistant\\gui\\workspace.py
+   git add job_app_assistant\\gui\\chat_tab.py
+
+6. Commit:
+   git commit -m "Clear chat state on workspace load"
+
+7. Push:
+   git push -u origin feature/chat-clear-on-load
+
+--------------------------------------------------
+18. TROUBLESHOOTING
+--------------------------------------------------
+
+Problem: push rejected because remote has content
+Cause:
+- GitHub repo was created with README or other initial files
+
+Fix:
+git pull origin main --allow-unrelated-histories
+git push
+
+Problem: wrong files are staged
+Fix:
+git status
+git restore --staged FILE_NAME
+
+Problem: you changed a file and want to discard local changes
+Fix:
+git restore FILE_NAME
+
+Problem: forgot what changed
+Fix:
+git diff
+
+Problem: committed locally but not pushed yet
+Fix:
+git push
+
+Problem: accidentally committed secret data
+Fix:
+- remove tracked file
+- commit removal
+- push
+- rotate the secret if it was exposed
+
+--------------------------------------------------
+19. SUGGESTED REPO HYGIENE FOR THIS PROJECT
+--------------------------------------------------
+
+Recommended:
+- Commit after each stable change
+- Keep commits small
+- Keep secrets local
+- Use descriptive messages
+- Do not dump test files into the repo root
+- Do not commit private resumes or candidate libraries unless intentionally sanitized
+- Review git diff before commit when working with config files
+
+--------------------------------------------------
+20. QUICK COMMAND REFERENCE
+--------------------------------------------------
+
+Initialize repo:
+git init
+
+Check status:
+git status
+
+See changes:
+git diff
+
+Stage all:
+git add .
+
+Stage one file:
+git add path\\to\\file.py
+
+Commit:
+git commit -m "Your message"
+
+Push:
+git push
+
+Pull:
+git pull
+
+Create branch:
+git checkout -b feature/branch-name
+
+Switch branch:
+git checkout main
+
+Remove tracked file but keep locally:
+git rm --cached settings.json
+
+Clone repo:
+git clone https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git
+
+--------------------------------------------------
+21. FINAL SAFETY CHECK FOR THIS PROJECT
+--------------------------------------------------
+
+Before any public push, confirm:
+- settings.json is ignored
+- no API keys are in tracked files
+- no personal library documents are included unintentionally
+- no __pycache__ or .pyc files are staged
+- commit message describes the real change
+- app still launches
+
+END OF GUIDE
+"""
+
+path = Path("/mnt/data/AI_Job_Application_Assistant_GIT_User_Guide.txt")
+path.write_text(content, encoding="utf-8")
+print(path)
